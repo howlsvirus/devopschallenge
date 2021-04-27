@@ -6,9 +6,6 @@ Parameters:
       Description: 'Name of the ec2 key you need one to use this template'
       Type: 'AWS::EC2::KeyPair::KeyName'
       Default: 'choose-key'
-    instance:
-      type: 'AWS::EC2::Image::Id'
-
     VpcId:
       Type: AWS::EC2::VPC::Id
       Description: VpcId of your existing Virtual Private Cloud (VPC)
@@ -27,7 +24,6 @@ Parameters:
         Cloud.
 
 Resources:
-
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -42,6 +38,36 @@ Resources:
           FromPort: '22'
           ToPort: '22'
           CidrIp: '0.0.0.0/0'
+  AmazonLinuxInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch,
+          !Ref 'InstanceType', Arch]]
+      InstanceType: !Ref 'InstanceType'
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          SubnetId: !Ref SubnetId
+          GroupSet: !Ref SecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          apt update
+          apt install python-pip -y
+          pip install ansible -y
+          apt install net-tools -y
+          ansible-galaxy install nginxinc.nginx -y
+          cat <<EOF > playbook.yml
+          ---
+          - hosts: localhost
+            become: true
+            roles:
+              - role: nginxinc.nginx
+          EOF
+          ansible-playbook playbook.yml
+          netstat -pant | grep nginx >> localIP.txt
 
   AmazonLinuxInstance2:
     Type: 'AWS::EC2::Instance'
@@ -69,7 +95,7 @@ Resources:
           /opt/aws/bin/cfn-signal \
             -e $? \
             --stack ${AWS::StackName} \
-            --resource AmazonLinuxInstance \
+            --resource AmazonLinuxInstance2 \
             --region ${AWS::Region}
 
   EC2TargetGroup:
@@ -136,7 +162,7 @@ Outputs:
     EC2Instance:
         Description: 'EC2 Instance'
         Value:
-          Ref: AmazonLinuxInstance
+          Ref: !Join [ ",", [ !Ref AmazonLinuxInstance,!Ref AmazonLinuxInstance2 ]]
     EC2TargetGroup:
         Description: 'EC2 Target Group'
         Value:
