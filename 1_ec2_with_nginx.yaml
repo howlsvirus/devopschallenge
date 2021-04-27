@@ -57,6 +57,7 @@ Resources:
           apt update
           apt install python-pip -y
           pip install ansible -y
+          apt install net-tools -y
           ansible-galaxy install nginxinc.nginx -y
           cat <<EOF > playbook.yml
           ---
@@ -66,6 +67,7 @@ Resources:
               - role: nginxinc.nginx
           EOF
           ansible-playbook playbook.yml
+          netstat -pant | grep nginx >> localIP.txt
   DemoSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
