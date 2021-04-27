@@ -18,3 +18,4 @@ Instrucciones
        se agrega la instancia EC2 al balanceador.
     6. Crear un grupo de auto escalado con 2 instancias  y un balancedor con:
        "4_groups.yaml"
+       NOTA: este ultimo, necesita por default que se tenga creado la VPC y sus subnets.
