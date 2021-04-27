@@ -1,0 +1,152 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Create ALB, ALB security group, target groups, listeners and listener rules"
+Parameters:
+    VPC:
+      Type: AWS::EC2::VPC::Id
+      Description: VpcId of your existing Virtual Private Cloud (VPC)
+      ConstraintDescription: must be the VPC Id of an existing Virtual Private Cloud.
+    PublicSubnet1:
+      Type: AWS::EC2::Subnet::Id
+      Description: SubnetId of an existing subnet (for the primary network) in your
+        Virtual Private Cloud (VPC)
+
+
+Resources:
+    ALBSecurityGroup:
+        Type: "AWS::EC2::SecurityGroup"
+        Properties:
+            GroupDescription: "security group for ALB"
+            GroupName: "test-ALB-SG"
+            VpcId: !Ref VPC
+            SecurityGroupIngress:
+              -
+                CidrIp: "0.0.0.0/0"
+                FromPort: 80
+                IpProtocol: "tcp"
+                ToPort: 80
+              -
+                CidrIp: "0.0.0.0/0"
+                FromPort: 443
+                IpProtocol: "tcp"
+                ToPort: 443
+
+    ApplicationLoadBalancer:
+        Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+        Properties:
+            Name: "test-Application-Load-Balancer"
+            Scheme: "internet-facing"
+            Type: "application"
+            Subnet:
+              - !Ref PublicSubnet1
+            SecurityGroups:
+              - !Ref ALBSecurityGroup
+            IpAddressType: "ipv4"
+            LoadBalancerAttributes:
+              -
+                Key: "access_logs.s3.enabled"
+                Value: "false"
+              -
+                Key: "idle_timeout.timeout_seconds"
+                Value: "60"
+              -
+                Key: "deletion_protection.enabled"
+                Value: "false"
+              -
+                Key: "routing.http2.enabled"
+                Value: "true"
+              -
+                Key: "routing.http.drop_invalid_header_fields.enabled"
+                Value: "false"
+
+    HTTPSListener:
+        Type: "AWS::ElasticLoadBalancingV2::Listener"
+        Properties:
+            LoadBalancerArn: !Ref ApplicationLoadBalancer
+            Port: 443
+            Protocol: "HTTPS"
+            SslPolicy: "ELBSecurityPolicy-2016-08"
+            Certificates:
+              -
+                CertificateArn: arn:aws:acm:us-west-2: #**************: valide certificate before creating the template/*********************
+
+            DefaultActions:
+              -
+                Order: 1
+                TargetGroupArn: !Ref Test1TargetGroup
+                Type: "forward"
+
+
+    Test1TargetGroup:
+        Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+        Properties:
+            HealthCheckIntervalSeconds: 30
+            HealthCheckPath: "/"
+            Port: 80
+            Protocol: "HTTP"
+            HealthCheckPort: "traffic-port"
+            HealthCheckProtocol: "HTTP"
+            HealthCheckTimeoutSeconds: 5
+            UnhealthyThresholdCount: 2
+            TargetType: "instance"
+            Matcher:
+                HttpCode: "200"
+            HealthyThresholdCount: 5
+            VpcId: !Ref VPC
+            Name: "target-group-1"
+            HealthCheckEnabled: true
+            TargetGroupAttributes:
+              -
+                Key: "stickiness.enabled"
+                Value: "false"
+              -
+                Key: "deregistration_delay.timeout_seconds"
+                Value: "300"
+              -
+                Key: "stickiness.type"
+                Value: "lb_cookie"
+              -
+                Key: "stickiness.lb_cookie.duration_seconds"
+                Value: "86400"
+              -
+                Key: "slow_start.duration_seconds"
+                Value: "0"
+              -
+                Key: "load_balancing.algorithm.type"
+                Value: "round_robin"
+
+
+    TestListenerRule1:
+        Type: "AWS::ElasticLoadBalancingV2::ListenerRule"
+        Properties:
+            Priority: "1"
+            ListenerArn: !Ref HTTPSListener
+            Conditions:
+              -
+                Field: "host-header"
+                Values:
+                  - "test.com" #this must be created or have before creating this template in cloudformation
+            Actions:
+              -
+                Type: "forward"
+                TargetGroupArn: !Ref Test1TargetGroup
+                Order: 1
+                ForwardConfig:
+                    TargetGroups:
+                      -
+                        TargetGroupArn: !Ref Test1TargetGroup
+                        Weight: 1
+                    TargetGroupStickinessConfig:
+                        Enabled: false
+
+Outputs:
+    ALB:
+        Description: The created loadbalancer
+        Value: !Ref ApplicationLoadBalancer
+
+    TargetGroup1:
+        Description: The created TargetGroup 1
+        Value: !Ref Test1TargetGroup
+
+    LoadBalancerSecurityGroup:
+        Description: the securty group for the ALB
+        Value: !Ref ALBSecurityGroup
