@@ -13,4 +13,8 @@ Instrucciones
     4. Se crea un balanceador en la subnet pública usando el archivo:
         "2_load_balancer.yaml"
        NOTA: se tiene que generar o tener una certificacion (yo use AWS Certificate Manager para generar una)
-    <!-- 5. Agregar la instancia EC2 al balanceador. -->
+    5. con el archivo:
+       "3_autoscaling.yaml"
+       se agrega la instancia EC2 al balanceador.
+    6. Crear un grupo de auto escalado con 2 instancias  y un balancedor con:
+       "4_groups.yaml"
