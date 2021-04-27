@@ -12,5 +12,5 @@ Instrucciones
         "localIP.txt"
     4. Se crea un balanceador en la subnet pública usando el archivo:
         "2_load_balancer.yaml"
-       NOTA: se tiene que generar o tener
+       NOTA: se tiene que generar o tener una certificacion (yo use AWS Certificate Manager para generar una)
     <!-- 5. Agregar la instancia EC2 al balanceador. -->
